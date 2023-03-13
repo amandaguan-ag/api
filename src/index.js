@@ -1,31 +1,20 @@
 import "bootstrap";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./css/styles.css";
+import WeatherService from "./weather-service.js";
 
 // Business Logic
 
 function getWeather(city, countryCode, zipCode) {
-  let request = new XMLHttpRequest();
-  let url;
-  if (zipCode) {
-    url = `http://api.openweathermap.org/data/2.5/weather?zip=${zipCode},${countryCode}&appid=${process.env.API_KEY}`;
-  } else {
-    url = `http://api.openweathermap.org/data/2.5/weather?q=${city},${countryCode}&appid=${process.env.API_KEY}`;
-  }
-
-  request.addEventListener("loadend", function () {
-    // fire when a request (API call) has been completed, whether or not it was successful.
-    const response = JSON.parse(this.responseText); //Parse the API response//ensures that the data is properly formatted as JSON data
-    if (this.status === 200) {
-      //Check if the API call was successful//status is also a property of XMLHttpRequest objects
-      printElements(response, city); //And if it was, call a function to print the data we received from the API
-    } else {
-      printError(this, response, city); //this represents the XMLHttpRequest object//response: Custom Error Messages from an API//city make our error message more descriptive.
+  let promise = WeatherService.getWeather(city, countryCode, zipCode);
+  promise.then(
+    function (weatherDataArray) {
+      printElements(weatherDataArray);
+    },
+    function (errorArray) {
+      printError(errorArray);
     }
-  });
-
-  request.open("GET", url, true); //making a request(method of the request, URL, boolean for whether the request should be asynchronous or not.)//async, because we don't want the browser to freeze up for our users
-  request.send(); //Once we've opened the request, we send it//wait for the API to return a response. Once it does, our callback function attached to the "loadend"
+  );
 }
 
 // function getWind(city, countryCode, zipCode) {
@@ -96,15 +85,15 @@ function getWeather(city, countryCode, zipCode) {
 
 // UI Logic
 
-function printElements(apiResponse) {
-  const tempFahrenheit = apiResponse.main.temp * 1.8 - 459.67;
+function printElements(data) {
+  const tempFahrenheit = data.main.temp * 1.8 - 459.67;
   document.querySelector(
     "#showResponse"
   ).innerHTML = `<div><p>The weather condition is ${
-    apiResponse.weather[0].description
+    data.weather[0].description
   }.</p><p>The temperature in Fahrenheit is ${tempFahrenheit.toFixed(
     1
-  )} degrees.</p><p>The humidity is ${apiResponse.main.humidity}%.</p></div>`;
+  )} degrees.</p><p>The humidity is ${data.main.humidity}%.</p></div>`;
 }
 
 // function printWind(apiResponse, city) {
@@ -137,10 +126,10 @@ function printElements(apiResponse) {
 //   ).innerHTML = `<div><p>The UV index in ${city} is ${apiResponse.value}.</p></div>`;
 // }
 
-function printError(request, apiResponse, city) {
+function printError(error) {
   document.querySelector(
     "#showResponse"
-  ).innerText = `There was an error accessing the weather data for ${city}: ${request.status} ${request.statusText}: ${apiResponse.message}`;
+  ).innerText = `There was an error accessing the weather data for ${error[2]}: ${error[0].status} ${error[0].statusText}: ${error[1].message}`;
 }
 
 function handleFormSubmission(event) {
@@ -151,7 +140,7 @@ function handleFormSubmission(event) {
   document.querySelector("#location").value = null;
   document.querySelector("#country-code").value = null;
   document.querySelector("#zip-code").value = null;
-  getWeather(city);
+  getWeather(city, countryCode, zipCode);
   //   getWind(city, countryCode, zipCode);
   //   getForecast(city, countryCode, zipCode);
   //   getUVIndex(city, countryCode, zipCode);
